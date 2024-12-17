@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OTP Verification</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.2/sweetalert.min.css"
+      integrity="sha384-OFO98I1/jj4hVZaH0rUbfCbRHLkkTyv4mxzZjV9p/F9qBuJpb+42mxNU2VGsdQJ"
+      crossorigin="anonymous"
+    />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f2f2f2;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        flex-direction: column;
+        margin: 0;
+      }
+      h2 {
+        color: #333;
+      }
+      form {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        margin-bottom: 10px;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        background-color: #4caf50;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      #timer {
+        margin-top: 10px;
+        color: red;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Request OTP</h2>
+    <form id="email-form">
+      <input
+        type="email"
+        id="email-input"
+        placeholder="Enter your email"
+        required
+      />
+      <button type="button" onclick="requestOTP()">Send OTP</button>
+    </form>
+
+    <div id="otp-section" style="display: none">
+      <h2>Enter OTP</h2>
+      <form id="otp-form">
+        <input type="text" id="otp-input" placeholder="Enter OTP" required />
+        <button type="button" onclick="verifyOTP()">Verify OTP</button>
+      </form>
+      <p id="timer"></p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.2/sweetalert.min.js"></script>
+    <script>
+      let countdown; // สร้างตัวแปรสำหรับเก็บตัวนับเวลา
+
+      function requestOTP() {
+        const email = document.getElementById("email-input").value;
+
+        // แสดงข้อความ "รอสักครู่"
+        swal({
+          title: "Please wait...",
+          text: "Generating OTP, please wait a moment.",
+          icon: "info",
+          buttons: false,
+          closeOnClickOutside: false,
+          closeOnEsc: false,
+        });
+
+        fetch("send_otp.php", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Network response was not ok");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            swal.close(); // ปิดข้อความ "รอสักครู่"
+
+            if (data.success) {
+              swal(
+                "OTP Sent!",
+                data.message || "OTP has been sent to your email.",
+                "success"
+              );
+              document.getElementById("otp-section").style.display = "block";
+              startCountdown();
+            } else {
+              swal("Error", data.message || "Failed to send OTP.", "error");
+            }
+          })
+          
+      }
+
+      function startCountdown() {
+        timeLeft = 60;
+        timerElement.textContent = `Time left: ${timeLeft} seconds`;
+        countdown = setInterval(() => {
+          timeLeft--;
+          timerElement.textContent = `Time left: ${timeLeft} seconds`;
+
+          if (timeLeft <= 0) {
+            clearInterval(countdown);
+            timerElement.textContent = "OTP has expired.";
+            swal(
+              "Expired",
+              "Your OTP has expired. Please request a new one.",
+              "warning"
+            );
+          }
+        }, 1000);
+      }
+
+      function verifyOTP() {
+        const otp = document.getElementById("otp-input").value;
+
+        fetch("verify_otp.php", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ otp }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              swal("Success", "OTP is valid!", "success");
+              // ซ่อนฟอร์ม OTP เมื่อ OTP ถูกต้อง
+              document.getElementById("otp-section").style.display = "none";
+              clearInterval(countdown); // หยุดนับเวลาเมื่อ OTP ถูกต้อง
+            } else {
+              swal("Error", data.message || "Invalid OTP.", "error");
+            }
+          })
+          .catch((error) => {
+            swal("Error", "An error occurred. Please try again.", "error");
+          });
+      }
+    </script>
+  </body>
+</html>
